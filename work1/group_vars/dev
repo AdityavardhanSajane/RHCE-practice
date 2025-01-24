@@ -1,0 +1,5 @@
+group_name_unix: unixadmin
+group_name_middleware: middleware
+user_name_unix: john2
+user_name_mw: joe2
+pass_var: redhat123

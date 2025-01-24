@@ -1,0 +1,31 @@
+---
+- name: Group and User creation
+  hosts: dev
+  tasks: 
+    - name: Group create - unixadm
+      ansible.builtin.group:
+        name: "{{ group_name_unix }}"
+        state: present
+    
+    - name: Group create - middleware
+      ansible.builtin.group:
+        name: "{{ group_name_middleware }}"
+        state: present
+
+    - name: User create - middleware
+      ansible.builtin.user:
+        name: "{{ user_name_mw }}"
+        state: present
+        group: "{{ group_name_middleware }}"
+        groups: "{{ group_name_unix }}"
+        password: "{{ pass_var | password_hash('sha512') }}"
+
+    - name: User create - unixadm
+      ansible.builtin.user:
+        name: "{{ user_name_unix }}"
+        state: present
+        group: "{{ group_name_unix }}"
+        groups: "{{ group_name_middleware }}"
+        password: "{{ pass_var | password_hash('sha512') }}"
+
+...

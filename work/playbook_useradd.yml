@@ -1,0 +1,17 @@
+---
+- name: User & Group Addition
+  hosts: all
+  tasks:
+    - name: Group Creation first task
+      ansible.builtin.group:
+        name: unixadm
+        gid: 12345
+        state: present
+    - name: User Creation second task
+      ansible.builtin.user:
+        name: mack
+        uid: 7070
+        groups: unixadm
+        state: present
+...
+

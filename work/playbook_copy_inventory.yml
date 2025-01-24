@@ -1,0 +1,12 @@
+---
+- name: This Playbook will copy the inventory.txt file to test servers
+  hosts: test
+  tasks:
+    - name: Copy file with owner and permissions
+      ansible.builtin.copy:
+        src: /home/student/work/inventory.txt
+        dest: /home/student/ansible_fcp
+        owner: student
+        group: student
+        mode: '0664'
+...
