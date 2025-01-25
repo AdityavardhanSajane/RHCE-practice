@@ -1,0 +1,27 @@
+---
+- name: User & Group Creation.
+  hosts: dev
+  tasks: 
+    - name: Group Creation
+      ansible.builtin.group:
+        name: "{{ item }}"
+        state: present
+      vars:
+        - group_names:
+            - unixadm
+            - dbadm
+            - middleware
+            - wintel
+      loop: "{{ group_names }}"
+
+    - name: User Creation
+      ansible.builtin.user:
+        name: "{{ item.user_name }}"
+        group: "{{ item.group_name }}"
+        uid: "{{ item.uid }}"
+        state: present
+      loop:
+        - { user_name: max1, group_name: unixadm, uid: 12345 }
+        - { user_name: max2, group_name: dbadm, uid: 12346 }
+        - { user_name: max3, group_name: middleware, uid: 12347 }
+        - { user_name: max4, group_name: wintel, uid: 12348 }
