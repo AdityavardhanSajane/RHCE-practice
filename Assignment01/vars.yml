@@ -1,0 +1,29 @@
+- group_list:
+    - grp-unixadm
+    - grp-dbadm
+    - grp-networkadm
+    - grp-app
+
+- user_details:
+    - { user_name: user1 , group_name: grp-unixadm , groups_name: grp-dbadm }
+    - { user_name: user2 , group_name: grp-dbadm , groups_name: grp-unixadm }
+    - { user_name: user3 , group_name: grp-networkadm , groups_name: grp-unixadm }
+    - { user_name: user4 , group_name: grp-app , groups_name: grp-networkadm }
+
+- root_pass: redhat123
+
+- pkg_list:
+    - httpd
+    - firewalld
+
+- svc_list:
+    - httpd
+    - firewalld
+
+- firewall_rule_list:
+    - http
+    - https
+    
+- server_list:
+    - serverc.lab.example.com
+    - serverd.lab.example.com

@@ -1,0 +1,73 @@
+---
+- name: This playbook will create Groups & Users only on Prod servers.
+  hosts: all
+  vars_files: 
+    - vars.yml
+  tasks:
+    - name: Group creation in progress
+      ansible.builtin.group:
+        name: "{{ item }}"
+        state: present
+      loop: "{{ group_list }}"
+      when: inventory_hostname in groups['prod'] 
+    
+    - name: User creation in progress 
+      ansible.builtin.user:
+        name: "{{ item.user_name }}"
+        group: "{{ item.group_name }}"
+        groups: "{{ item.groups_name }}"
+        password: "{{ root_pass | password_hash('sha512') }}"
+      loop: "{{ user_details }}"
+      when: inventory_hostname in groups['prod'] 
+     
+    - name: Install Packages
+      ansible.builtin.yum:
+        name: "{{ item }}"
+        state: present
+      loop: "{{ pkg_list }}"
+      when: inventory_hostname in groups['dev'] or inventory_hostname in groups['test']
+
+    - name: Restart Services
+      ansible.builtin.service:
+        name: "{{ item }}"
+        state: started
+        enabled: true
+      loop: "{{ svc_list }}"
+      when: inventory_hostname in groups['dev'] or inventory_hostname in groups['test']
+  
+    - name: Adding firewall rule
+      ansible.posix.firewalld:
+        service: "{{ item }}"
+        immediate: true
+        state: enabled
+        permanent: true
+      loop: "{{ firewall_rule_list }}"
+      when: inventory_hostname in groups['dev'] or inventory_hostname in groups['test']
+    
+    - name: Application Deployment
+      ansible.builtin.copy:
+        content: "This is my Web Server - {{ inventory_hostname }} \n" 
+        dest: /var/www/html/index.html
+      when: inventory_hostname in groups['dev'] or inventory_hostname in groups['test']
+
+- name: Application Verification - play 2
+  hosts: myself
+  gather_facts: false
+  vars_files: 
+    - vars.yml
+  become: false
+  tasks:
+    - name: App verification in progress
+      ansible.builtin.uri:
+        url: http://{{ item }}
+        return_content: yes
+        status_code: 200
+      loop: "{{ server_list }}"
+...
+
+
+
+
+
+
+
