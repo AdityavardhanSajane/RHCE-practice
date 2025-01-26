@@ -1,0 +1,79 @@
+---
+- name: This playbook will do the apache configuration using handler
+  hosts: all
+  vars_files:
+    - vars_apache.yml
+  tasks:
+    - name: Install Packages
+      ansible.builtin.yum:
+        name: "{{ item }}"
+        state: present
+      loop: "{{ pkg_name }}"
+      when: inventory_hostname in groups['test']
+
+    - name: Start and Enable services
+      ansible.builtin.service:
+        name: "{{ item }}"
+        state: started
+        enabled: true
+      loop: "{{ svc_name }}"
+      when: inventory_hostname in groups['test']
+
+    - name: Enabling firewall rules
+      ansible.posix.firewalld:
+        service: "{{ item }}"
+        state: enabled
+        immediate: true
+        permanent: true 
+      loop: "{{ rule_list }}"
+      when: inventory_hostname in groups['test']
+
+    - name: Ensuring remote directory status
+      ansible.builtin.stat:
+        path: "{{ remote_path }}"
+      register: stat_output
+    
+    - name: Verify remote directory existence 
+      ansible.builtin.file:
+        path: "{{ remote_path }}"
+        owner: apache
+        user: apache
+        mode: "0755"
+        state: directory
+      when: 
+        - inventory_hostname in groups['test']
+        - stat_output.stat.exists == false
+      
+    - name: Apache config change
+      ansible.builtin.copy:
+        src: http.conf
+        dest: /etc/httpd/conf.d/http.conf
+        force: true
+      notify:
+        - apache restart
+      when: inventory_hostname in groups['test']
+
+    - name: Application Deployment
+      ansible.builtin.copy:
+        content: "This is my Web Server - {{ inventory_hostname }} This is handler change \n"
+        dest: "{{ remote_path }}/index.html"
+      when: inventory_hostname in groups['test']
+
+  handlers: 
+    - name: apache restart
+      ansible.builtin.service:
+        name: httpd
+        state: restarted
+
+
+
+
+
+
+
+
+
+
+
+
+    

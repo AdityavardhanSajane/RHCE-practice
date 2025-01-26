@@ -1,0 +1,26 @@
+---
+- name: This playbook will ensure if there is file or dir present.
+  hosts: test
+  vars:
+    - remote_location: "/var/www/vhosts"
+  tasks:
+    - name: Checking file or dir exists or no
+      ansible.builtin.stat:
+        path: "{{ remote_location }}"
+      register: stat_output
+
+    - name: Display stat_output
+      ansible.builtin.debug:
+        var: stat_output.stat.exists
+        
+    - name: Directory creation in progress
+      ansible.builtin.file:
+        path: "{{ remote_location }}"
+        owner: apache
+        group: apache
+        mode: '0755'
+        state: directory
+      when: stat_output.stat.exists == false
+
+
+

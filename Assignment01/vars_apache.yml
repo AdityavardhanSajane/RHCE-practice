@@ -1,0 +1,17 @@
+
+- pkg_name:
+    - httpd
+    - firewalld
+
+- svc_name:
+    - httpd
+    - firewalld
+
+- rule_list:
+    - http
+    - https
+
+- remote_path: "/var/www/vhosts/"
+
+
+
