@@ -1,4 +1,4 @@
----
+--- 
 - name: This playbook will do the apache configuration using handler
   hosts: all
   vars_files:
