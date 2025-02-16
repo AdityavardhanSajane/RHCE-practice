@@ -1,0 +1,62 @@
+---
+- name: Create LVM
+  hosts: dev
+  tasks:
+    - block:
+        - name: Check if LV 'data' exists in VG 'research'
+          set_fact:
+            data_lv_exists: "{{ 'data' in ansible_lvm.lvs if ansible_lvm.lvs is defined else False }}"
+        
+        - name: Skip LV creation if 'data' already exists
+          debug:
+            msg: "LVM 'data' already exists, skipping creation."
+          when: data_lv_exists
+        - block:
+            - name: Create LV of 1500 MiB
+              lvol:
+                vg: research
+                lv: data
+                size: 1500m
+              register: lv_1500_result
+              when: ansible_lvm.vgs.research.size_g | float > 1.46484  # Convert to float
+
+            - name: Display message if 1500 MiB LV creation fails
+              debug:
+                msg: "INSUFFICIENT SIZE OF VG for 1500 MiB"
+              when: lv_1500_result is failed or not lv_1500_result.changed
+
+            - name: Create LV of 800 MiB (if 1500 MiB creation failed)
+              lvol:
+                vg: research
+                lv: data
+                size: 800m
+              register: lv_800_result
+              when:
+                - ansible_lvm.vgs.research.size_g | float >= 0.78125
+                - lv_1500_result is failed or not lv_1500_result.changed
+
+            - name: Display message if 800 MiB LV creation fails
+              debug:
+                msg: "INSUFFICIENT SIZE OF VG for 800 MiB"
+              when: lv_800_result is failed or not lv_800_result.changed
+
+            - name: Format LV with ext4 (only if successfully created)
+              filesystem:
+                fstype: ext4
+                dev: /dev/research/data
+              when: lv_1500_result.changed or lv_800_result.changed
+  
+          when:
+            - ansible_lvm.vgs.research is defined
+            - not data_lv_exists  # Run only if 'data' LVM does not exist
+
+      when: ansible_lvm.vgs.research is defined
+
+    - name: Display message if VG 'research' is not found
+      debug:
+        msg: "VG 'research' NOT FOUND"
+      when: ansible_lvm.vgs.research is not defined
+
+
+...
+
