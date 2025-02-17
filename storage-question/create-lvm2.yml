@@ -1,0 +1,59 @@
+---
+- name: Create LVM
+  hosts: dev
+  vars:
+    vg: research
+    lv: data
+  tasks:
+    - name: Check VG existence
+      set_fact:
+        vg_exists: "{{ vg in ansible_lvm.vgs }}"
+        
+    - block:
+        - name: Check LV existence
+          set_fact:
+            lv_exists: "{{ lv in ansible_lvm.lvs }}"
+        
+        - block:
+            - name: Try 1500MiB LV
+              lvol:
+                vg: "{{ vg }}"
+                lv: "{{ lv }}"
+                size: 1500m
+              register: result
+              when: ansible_lvm.vgs[vg].size_g > 1.46
+
+            - name: Fallback to 800MiB LV
+              lvol:
+                vg: "{{ vg }}"
+                lv: "{{ lv }}"
+                size: 800m
+              register: result
+              when: 
+                - ansible_lvm.vgs[vg].size_g >= 0.78
+                - result is skipped or result is failed
+
+            - name: Format LV if created
+              filesystem:
+                fstype: ext4
+                dev: "/dev/{{ vg }}/{{ lv }}"
+              when: result.changed
+
+          when: not lv_exists
+          rescue:
+            - name: Handle failure
+              debug:
+                msg: "INSUFFICIENT SIZE OF VG for {{ '1500' if result is skipped else '800' }} MiB"
+
+        - name: Skip message
+          debug:
+            msg: "LV '{{ lv }}' already exists"
+          when: lv_exists
+
+      when: vg_exists
+      rescue:
+        - name: Missing VG message
+          debug:
+            msg: "VG '{{ vg }}' NOT FOUND"
+
+...

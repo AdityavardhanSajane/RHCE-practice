@@ -1,0 +1,64 @@
+---
+- name: Create LVM
+  hosts: all
+  vars:
+    vg: research
+    lv: data
+
+  tasks:
+    - name: Check VG existence
+      ansible.builtin.set_fact:
+        vg_exists: "{{ vg in ansible_lvm.vgs }}"
+      changed_when: false
+
+    - block:
+        - name: Check LV existence
+          ansible.builtin.set_fact:
+            lv_exists: "{{ (ansible_lvm.lvs is defined and lv in ansible_lvm.lvs) | default(false) }}"
+          changed_when: false
+
+        - block:
+            - name: Attempt 1500M LV
+              community.general.lvol:
+                vg: "{{ vg }}"
+                lv: "{{ lv }}"
+                size: 1500m
+              register: lv_1500_result
+              when: ansible_lvm.vgs[vg].size_g | float > 1.46484
+
+            - name: Show 1500M failure
+              ansible.builtin.debug:
+                msg: "Insufficient size of VG"
+              when: lv_1500_result is skipped or lv_1500_result is failed
+
+            - name: Attempt 800M LV
+              community.general.lvol:
+                vg: "{{ vg }}"
+                lv: "{{ lv }}"
+                size: 800m
+              register: lv_800_result
+              when:
+                - ansible_lvm.vgs[vg].size_g | float >= 0.78125
+                - lv_1500_result is failed or lv_1500_result is skipped
+
+            - name: Format LV if created
+              community.general.filesystem:
+                fstype: ext4
+                dev: "/dev/{{ vg }}/{{ lv }}"
+              when: lv_1500_result.changed or lv_800_result.changed
+
+          when: not lv_exists
+
+        - name: Skip message
+          ansible.builtin.debug:
+            msg: "LVM '{{ lv }}' already exists"
+          when: lv_exists
+
+      when: vg_exists
+
+    - name: VG not found handler
+      ansible.builtin.debug:
+        msg: "vg not found"
+      when: not vg_exists
+...
+

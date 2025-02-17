@@ -1,0 +1,64 @@
+---
+- name: Create LVM
+  hosts: dev
+  vars:
+    vg: research
+    lv: data
+
+  tasks:
+    - name: Check if Volume Group (VG) exists
+      set_fact:
+        vg_exists: "{{ vg in ansible_lvm.vgs }}"
+      changed_when: false
+
+    - block:
+        - name: Check if Logical Volume (LV) exists
+          set_fact:
+            lv_exists: "{{ (ansible_lvm.lvs is defined and lv in ansible_lvm.lvs) | default(false) }}"
+          changed_when: false
+
+        - block:
+            - name: Attempt to create 1500 MiB LV
+              lvol:
+                vg: "{{ vg }}"
+                lv: "{{ lv }}"
+                size: 1500m
+              register: lv_1500_result
+              when: ansible_lvm.vgs[vg].size_g | float > 1.46484
+
+            - name: Attempt to create 800 MiB LV if 1500 MiB creation fails
+              lvol:
+                vg: "{{ vg }}"
+                lv: "{{ lv }}"
+                size: 800m
+              register: lv_800_result
+              when:
+                - ansible_lvm.vgs[vg].size_g | float >= 0.78125
+                - lv_1500_result is failed or lv_1500_result is skipped
+
+            - name: Format the LV with ext4 if successfully created
+              filesystem:
+                fstype: ext4
+                dev: "/dev/{{ vg }}/{{ lv }}"
+              when: (lv_1500_result is changed) or (lv_800_result is changed)
+
+            - name: Display message if VG size is insufficient
+              debug:
+                msg: "INSUFFICIENT SIZE OF VG for {{ '1500' if lv_800_result is not defined else '800' }} MiB"
+              when: (lv_1500_result is failed or lv_800_result is failed) and not (lv_1500_result is changed or lv_800_result is changed)
+
+          when: not lv_exists
+
+        - name: Skip creation if LV already exists
+          debug:
+            msg: "LVM '{{ lv }}' already exists"
+          when: lv_exists
+
+      when: vg_exists
+
+    - name: Display message if VG is missing
+      debug:
+        msg: "VG '{{ vg }}' NOT FOUND"
+      when: not vg_exists
+...
+
